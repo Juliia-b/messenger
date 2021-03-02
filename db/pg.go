@@ -11,11 +11,17 @@ func ConnectToPostgres() (*PostgresClient, error) {
 	var dbName = "messenger"
 	dbConn, err := openDbByName(dbName) // psql: error: FATAL:  database "*" does not exist
 	if err != nil {
+		// handling a database connection error
+
 		if !isErrorDbNotExist(err, dbName) {
 			return nil, err
 		}
 
-		dbConn, err = tryCreateAndConnectToDB(dbName)
+		if tryCreateMissingDatabase(dbName) != nil {
+			return nil, err
+		}
+
+		dbConn, err = openDbByName(dbName)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +46,7 @@ func (p *PostgresClient) SetUpDatabase() error {
 	p.conn.SetMaxOpenConns(25)
 	p.conn.SetMaxIdleConns(25)
 
-	err := createTables(p.conn)
+	err := createTablesIfNotExist(p.conn)
 	return err
 }
 
@@ -64,8 +70,8 @@ func get_tablesInfo() *tablesInfo {
 	}
 }
 
-// createTables creates all necessary missing tables in the database.
-func createTables(dbConn *sql.DB) error {
+// createTablesIfNotExist creates all necessary missing tables in the database.
+func createTablesIfNotExist(dbConn *sql.DB) error {
 	if err := createTableUser(dbConn); err != nil {
 		return err
 	}
@@ -107,18 +113,17 @@ func createTableMessage(dbConn *sql.DB) error {
 
 //////////////////////////////////////////////////
 
-// TODO переписать или выбрать др название
-func tryCreateAndConnectToDB(dbName string) (dbConn *sql.DB, err error) {
+func tryCreateMissingDatabase(dbName string) error {
 	dbConnDefault, err := openDbByDefaultName()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := createDatabaseIfNotExists(dbConnDefault, dbName); err != nil {
-		return nil, err
+	if err := createDatabaseByName(dbConnDefault, dbName); err != nil {
+		return err
 	}
 
-	return openDbByName(dbName)
+	return nil
 }
 
 func openDbByName(dbName string) (*sql.DB, error) {
@@ -133,8 +138,8 @@ func openDbByDefaultName() (*sql.DB, error) {
 	return sql.Open("postgres", dataSourceName)
 }
 
-// createDatabaseIfNotExists
-func createDatabaseIfNotExists(dbConn *sql.DB, dbName string) error {
+// createDatabaseByName
+func createDatabaseByName(dbConn *sql.DB, dbName string) error {
 	var sqlStatement = fmt.Sprintf("SELECT 'CREATE DATABASE %v'\nWHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '%v')\\gexec", dbName, dbName)
 
 	_, err := dbConn.Exec(sqlStatement)
