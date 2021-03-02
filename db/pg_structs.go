@@ -6,28 +6,25 @@ import "database/sql"
 
 type PostgresClient struct {
 	conn       *sql.DB
-	dbInfo     *dbInfo
-	tablesInfo *tablesInfo
+	dbName     string
+	tableNames *tableNames
 }
 
-type dbInfo struct {
-	dbName string
-}
-
-type tablesInfo struct {
-	tableUser       string
-	tableMessage    string
-	tableChat       string
-	tableChatMember string
+type tableNames struct {
+	user       string
+	message    string
+	chat       string
+	chatMember string
 }
 
 /* ------- Tables ------- */
 
 type User struct {
-	ID        int64  `json="user_id"`
-	FirstName string `json="first_name"`
-	LastName  string `json="last_name"`
-	Nickname  string `json="nickname"`
+	ID        int64
+	FirstName string
+	LastName  string
+	Nickname  string
+	Password  []byte
 }
 
 type Chat struct {

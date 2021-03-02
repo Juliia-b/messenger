@@ -4,9 +4,10 @@ package db
 
 user: {
 	id         SERIAL
-	first_name text NOT NULL
-	last_name  text NOT NULL
-	nickname   text NOT NULL UNIQUE
+	first_name text  NOT NULL
+	last_name  text  NOT NULL
+	nickname   text  NOT NULL UNIQUE
+    password   bytea NOT NULL
 	PRIMARY KEY(id)
 }
 
@@ -30,7 +31,7 @@ message: {
 	chat_id        integer NOT NULL
     sender_id      integer NOT NULL - is user who sends message into the chat
     content_text   text
-    content_photo  text             - as []byte in base64
+    content_photo  bytea            - as []byte in base64
 	date           bigint  NOT NULL
     UNIQUE (id, chat_id)
 }

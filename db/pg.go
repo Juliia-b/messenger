@@ -34,8 +34,8 @@ func ConnectToPostgres() (*PostgresClient, error) {
 
 	return &PostgresClient{
 		conn:       dbConn,
-		dbInfo:     get_dbInfo(dbName),
-		tablesInfo: get_tablesInfo(),
+		dbName:     dbName,
+		tableNames: get_tableNames(),
 	}, nil
 }
 
@@ -55,18 +55,14 @@ func (p *PostgresClient) CloseConnection() {
 	p.conn.Close()
 }
 
-func get_dbInfo(dbName string) *dbInfo {
-	return &dbInfo{
-		dbName: dbName,
-	}
-}
+/* ----- helpers ----- */
 
-func get_tablesInfo() *tablesInfo {
-	return &tablesInfo{
-		tableUser:       "user",
-		tableMessage:    "message",
-		tableChat:       "chat",
-		tableChatMember: "chat_member",
+func get_tableNames() *tableNames {
+	return &tableNames{
+		user:       "user",
+		message:    "message",
+		chat:       "chat",
+		chatMember: "chat_member",
 	}
 }
 
@@ -92,7 +88,7 @@ func createTablesIfNotExist(dbConn *sql.DB) error {
 }
 
 func createTableUser(dbConn *sql.DB) error {
-	_, err := dbConn.Exec(`CREATE TABLE IF NOT EXISTS user ( id SERIAL, first_name text NOT NULL, last_name text NOT NULL, nickname text NOT NULL,  PRIMARY KEY(id) );`)
+	_, err := dbConn.Exec(`CREATE TABLE IF NOT EXISTS user ( id SERIAL, first_name text NOT NULL, last_name text NOT NULL, nickname text NOT NULL, password bytea NOT NULL,  PRIMARY KEY(id) );`)
 	return err
 }
 
@@ -107,11 +103,9 @@ func createTableChatMembers(dbConn *sql.DB) error {
 }
 
 func createTableMessage(dbConn *sql.DB) error {
-	_, err := dbConn.Exec(`CREATE TABLE IF NOT EXISTS message (id SERIAL, chat_id integer NOT NULL, sender_id integer NOT NULL, content_text text, content_photo text, date bigint  NOT NULL, UNIQUE (id, chat_id) );`)
+	_, err := dbConn.Exec(`CREATE TABLE IF NOT EXISTS message (id SERIAL, chat_id integer NOT NULL, sender_id integer NOT NULL, content_text text, content_photo bytea, date bigint  NOT NULL, UNIQUE (id, chat_id) );`)
 	return err
 }
-
-//////////////////////////////////////////////////
 
 func tryCreateMissingDatabase(dbName string) error {
 	dbConnDefault, err := openDbByDefaultName()
