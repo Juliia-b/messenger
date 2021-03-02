@@ -2,46 +2,55 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"messenger/db"
 	"net/http"
 )
 
-func (h *handler) headersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "Origin")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers",
-			"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-		w.Header().Set("Content-Type", "application/json")
-		next.ServeHTTP(w, r)
-	})
+func sendErr(w http.ResponseWriter, statusCode int, err error) {
+	w.WriteHeader(statusCode)
+	w.Write([]byte(err.Error()))
 }
 
-// registration carries out the process of user registration in the system.
-func (h *handler) registration(w http.ResponseWriter, r *http.Request) {
+// userRegistration carries out the process of user userRegistration in the system.
+func (h *handler) userRegistration(w http.ResponseWriter, r *http.Request) {
 	var userFirstName = r.FormValue("firstname")
-	var userSecondName = r.FormValue("lastname")
+	var userLastName = r.FormValue("lastname")
 	var userNickname = r.FormValue("nickname")
-	var password = r.FormValue("pass")
+	var password = r.FormValue("password")
 
-	err := validatePostParameters(userFirstName, userSecondName, userNickname, password)
+	err := validatePostParameters(userFirstName, userLastName, userNickname, password)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		sendErr(w, http.StatusBadRequest, err)
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		sendErr(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	fmt.Println(hashedPassword)
-	//	push to db
+	user := &db.User{FirstName: userFirstName, LastName: userLastName, Nickname: userNickname, Password: hashedPassword}
+
+	cookie, err := generateCookie(user)
+	if err != nil {
+		sendErr(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	_, err = h.DbCli.InsertUser(user)
+	if err != nil {
+		sendErr(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.SetCookie(w, cookie)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
+
+/* ----- helpers ----- */
 
 // validatePostParameters validates post request parameters. All post parameters must be not empty.
 func validatePostParameters(userFirstName, userSecondName, userNickname, password string) error {

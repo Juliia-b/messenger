@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gorilla/mux"
+	"messenger/db"
 	"net/http"
 	"time"
 )
@@ -11,13 +12,13 @@ type Server struct {
 	Server *http.Server
 }
 
-func Init() *http.Server {
+func Init(dbCli db.DB) *http.Server {
 	var r = mux.NewRouter()
-	var h = handlerInit()
+	var h = handlerInit(dbCli)
 
 	r.Use(h.headersMiddleware)
 
-	r.HandleFunc("/user/registration", h.registration).Methods("POST")
+	r.HandleFunc("/user/registration", h.userRegistration).Methods("POST")
 
 	return &http.Server{
 		Handler:      r,
